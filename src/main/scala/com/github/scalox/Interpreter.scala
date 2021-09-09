@@ -23,6 +23,13 @@ class Interpreter {
     case BlockStmt(statements) =>
       val blockEnv: Environment = new Environment(Some(env))
       statements.foreach(execute(_)(blockEnv))
+    case IfStmt(condition, thenBranch, elseBranch) =>
+      val conditionValue: Boolean = isTruthy(evaluate(condition))
+      if(conditionValue){
+        execute(thenBranch)
+      }else{
+        elseBranch.foreach(execute(_))
+      }
   }
 
   def interpret(expression: Expr): Unit = {
@@ -118,6 +125,23 @@ class Interpreter {
       val evaluatedValue = evaluate(value)
       env.assign(name, evaluatedValue)
       evaluatedValue
+    }
+    case LogicalExpr(left, operator, right) => {
+      val leftValue: Option[Any] = evaluate(left)
+      operator.tokenType match {
+        //short circuit
+        case TokenType.OR => if(isTruthy(leftValue)){
+          leftValue
+        }else{
+          evaluate(right)
+        }
+        case TokenType.AND => if(!isTruthy(leftValue)){
+          leftValue
+        } else{
+          evaluate(right)
+        }
+        case _ => throw RuntimeError(operator, "Unrecognized logical operator.")
+      }
     }
   }
 

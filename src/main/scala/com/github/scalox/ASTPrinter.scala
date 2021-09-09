@@ -16,6 +16,7 @@ object ASTPrinter {
     case VariableExpr(name) =>
       s"(var ${name.lexeme})"
     case AssignExpr(name, value) => parenthesize(name.lexeme, value)
+    case LogicalExpr(left, operator, right) => parenthesize(operator.lexeme, left, right)
   }
 
   private def parenthesize(name: String, exprs: Expr*): String = {

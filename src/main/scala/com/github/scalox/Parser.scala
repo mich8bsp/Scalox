@@ -57,14 +57,30 @@ class Parser(tokens: Seq[Token]) {
   }
 
   private def statement(): Stmt = {
-    // statement -> expressionStatement | printStatement | blockStatement
+    // statement -> expressionStatement | ifStmt | printStatement | blockStatement
     if (matchExpr(PRINT)) {
       printStatement()
     } else if (matchExpr(LEFT_BRACE)) {
-      BlockStmt(blockStatement())
+      blockStatement()
+    }else if (matchExpr(IF)){
+      ifStatement()
     } else {
       expressionStatement()
     }
+  }
+
+  private def ifStatement(): Stmt = {
+    consume(LEFT_PAREN, "Expect '(' after 'if'.")
+    val condition: Expr = expression()
+    consume(RIGHT_PAREN, "Expect ')' after if condition.")
+
+    val thenBranch: Stmt = statement()
+    val elseBranch: Option[Stmt] = if(matchExpr(ELSE)){
+      Some(statement())
+    }else{
+      None
+    }
+    IfStmt(condition, thenBranch, elseBranch)
   }
 
   private def printStatement(): Stmt = {
@@ -79,7 +95,7 @@ class Parser(tokens: Seq[Token]) {
     ExpressionStmt(expr)
   }
 
-  private def blockStatement(): Seq[Stmt] = {
+  private def blockStatement(): Stmt = {
     // blockStatement -> "{" declaration* "}"
     val statements: mutable.Buffer[Stmt] = mutable.Buffer()
     while (!check(RIGHT_BRACE) && !isAtEnd) {
@@ -87,14 +103,16 @@ class Parser(tokens: Seq[Token]) {
     }
 
     consume(RIGHT_BRACE, "Expect '}' after block.")
-    statements.toSeq
+    BlockStmt(statements.toSeq)
   }
 
   private def expression(): Expr = {
+    // expression -> assignment
     assignment()
   }
 
   private def assignment(): Expr = {
+    // assignment -> IDENTIFIER "=" assignment | ternary
     val expr = ternary()
 
     if (matchExpr(EQUAL)) {
@@ -112,8 +130,8 @@ class Parser(tokens: Seq[Token]) {
   }
 
   private def ternary(): Expr = {
-    //ternary -> equality ("?") expression (":") expression | equality
-    var expr = equality()
+    //ternary -> equality ("?") expression (":") expression | logic_or
+    var expr = logicOr()
 
     if (matchExpr(QUESTION_MARK)) {
       val leftOperator = previous
@@ -131,6 +149,32 @@ class Parser(tokens: Seq[Token]) {
       } else {
         throw error(peek, "Expected : after expression.")
       }
+    }
+
+    expr
+  }
+
+  private def logicOr(): Expr = {
+    // logic_or -> logic_and ( "or" logic_and )*
+    var expr = logicAnd()
+
+    while(matchExpr(OR)){
+      val operator = previous
+      val right = logicAnd()
+      expr = LogicalExpr(expr, operator, right)
+    }
+
+    expr
+  }
+
+  private def logicAnd(): Expr = {
+    // logic_and -> equality ( "and" equality)*
+    var expr = equality()
+
+    while(matchExpr(AND)){
+      val operator = previous
+      val right = equality()
+      expr = LogicalExpr(expr, operator, right)
     }
 
     expr
