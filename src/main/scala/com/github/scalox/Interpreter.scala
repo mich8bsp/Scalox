@@ -30,6 +30,10 @@ class Interpreter {
       }else{
         elseBranch.foreach(execute(_))
       }
+    case WhileStmt(condition, body) =>
+      while(isTruthy(evaluate(condition))){
+        execute(body)
+      }
   }
 
   def interpret(expression: Expr): Unit = {

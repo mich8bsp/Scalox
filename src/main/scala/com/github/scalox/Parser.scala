@@ -57,19 +57,24 @@ class Parser(tokens: Seq[Token]) {
   }
 
   private def statement(): Stmt = {
-    // statement -> expressionStatement | ifStmt | printStatement | blockStatement
+    // statement -> expressionStatement | forStatement | ifStatement | printStatement | whileStatement | blockStatement
     if (matchExpr(PRINT)) {
       printStatement()
     } else if (matchExpr(LEFT_BRACE)) {
       blockStatement()
     }else if (matchExpr(IF)){
       ifStatement()
+    } else if (matchExpr(WHILE)){
+      whileStatement()
+    } else if (matchExpr(FOR)){
+      forStatement()
     } else {
       expressionStatement()
     }
   }
 
   private def ifStatement(): Stmt = {
+    // ifStatement -> "if" "(" expression ")" statement ( "else" statement )?
     consume(LEFT_PAREN, "Expect '(' after 'if'.")
     val condition: Expr = expression()
     consume(RIGHT_PAREN, "Expect ')' after if condition.")
@@ -83,20 +88,73 @@ class Parser(tokens: Seq[Token]) {
     IfStmt(condition, thenBranch, elseBranch)
   }
 
+  private def whileStatement(): Stmt = {
+    //whileStatement -> "while" "(" expression ")" statement
+    consume(LEFT_PAREN, "Expect '(' after 'while'.")
+    val condition: Expr = expression()
+    consume(RIGHT_PAREN, "Expect ')' after while condition.")
+
+    val loopStatement: Stmt = statement()
+
+    WhileStmt(condition, loopStatement)
+  }
+
+  private def forStatement(): Stmt = {
+    //forStatement -> "for" "(" (varDeclaration | exprStmt | ";") expression? ";" expression? ")" statement
+    consume(LEFT_PAREN, "Expect '(' after 'for'.")
+
+    val initializer: Option[Stmt] = if(matchExpr(SEMICOLON)){
+      None
+    }else if (matchExpr(VAR)){
+      Some(varDeclaration())
+    }else {
+      Some(expressionStatement())
+    }
+
+    val condition: Expr = if(!check(SEMICOLON)){
+      expression()
+    }else{
+      LiteralExpr(Some(true))
+    }
+    consume(SEMICOLON, "Expect ';' after loop condition.")
+
+    val increment: Option[Expr] = if(!check(SEMICOLON)){
+      Some(expression())
+    }else{
+      None
+    }
+    consume(RIGHT_PAREN, "Expect ')' after for clauses.")
+
+    var body: Stmt = statement()
+    increment.foreach(incr => {
+      body = BlockStmt(Seq(body, ExpressionStmt(incr)))
+    })
+
+    body = WhileStmt(condition, body)
+
+    initializer.foreach(init => {
+      body = BlockStmt(Seq(init, body))
+    })
+
+    body
+  }
+
   private def printStatement(): Stmt = {
+    //printStatement -> "print" expression
     val expr = expression()
     consume(SEMICOLON, "Expect ';' after value.")
     PrintStmt(expr)
   }
 
   private def expressionStatement(): Stmt = {
+    // expressionStatement -> expression
     val expr = expression()
     consume(SEMICOLON, "Expect ';' after value.")
     ExpressionStmt(expr)
   }
 
   private def blockStatement(): Stmt = {
-    // blockStatement -> "{" declaration* "}"
+    // blockStatement -> "{" declaration* "}" ;
     val statements: mutable.Buffer[Stmt] = mutable.Buffer()
     while (!check(RIGHT_BRACE) && !isAtEnd) {
       declaration().foreach(statements.append)
