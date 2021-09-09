@@ -6,6 +6,7 @@ import scala.collection.mutable
 
 class Parser(tokens: Seq[Token]) {
   private var current: Int = 0
+  private var loopDepth: Int = 0
 
   def parseStatements(): Seq[Stmt] = try {
     // program -> declaration* EOF
@@ -57,7 +58,7 @@ class Parser(tokens: Seq[Token]) {
   }
 
   private def statement(): Stmt = {
-    // statement -> expressionStatement | forStatement | ifStatement | printStatement | whileStatement | blockStatement
+    // statement -> expressionStatement | forStatement | ifStatement | printStatement | whileStatement | blockStatement | breakStatement | continueStatement
     if (matchExpr(PRINT)) {
       printStatement()
     } else if (matchExpr(LEFT_BRACE)) {
@@ -68,6 +69,8 @@ class Parser(tokens: Seq[Token]) {
       whileStatement()
     } else if (matchExpr(FOR)){
       forStatement()
+    } else if (matchExpr(BREAK)){
+      breakStatement()
     } else {
       expressionStatement()
     }
@@ -94,9 +97,14 @@ class Parser(tokens: Seq[Token]) {
     val condition: Expr = expression()
     consume(RIGHT_PAREN, "Expect ')' after while condition.")
 
-    val loopStatement: Stmt = statement()
+    try {
+      loopDepth += 1
+      val loopStatement: Stmt = statement()
+      WhileStmt(condition, loopStatement)
+    } finally {
+      loopDepth -= 1
+    }
 
-    WhileStmt(condition, loopStatement)
   }
 
   private def forStatement(): Stmt = {
@@ -125,18 +133,23 @@ class Parser(tokens: Seq[Token]) {
     }
     consume(RIGHT_PAREN, "Expect ')' after for clauses.")
 
-    var body: Stmt = statement()
-    increment.foreach(incr => {
-      body = BlockStmt(Seq(body, ExpressionStmt(incr)))
-    })
+    try {
+      loopDepth += 1
+      var body: Stmt = statement()
+      increment.foreach(incr => {
+        body = BlockStmt(Seq(body, ExpressionStmt(incr)))
+      })
 
-    body = WhileStmt(condition, body)
+      body = WhileStmt(condition, body)
 
-    initializer.foreach(init => {
-      body = BlockStmt(Seq(init, body))
-    })
+      initializer.foreach(init => {
+        body = BlockStmt(Seq(init, body))
+      })
 
-    body
+      body
+    } finally {
+      loopDepth -= 1
+    }
   }
 
   private def printStatement(): Stmt = {
@@ -144,6 +157,14 @@ class Parser(tokens: Seq[Token]) {
     val expr = expression()
     consume(SEMICOLON, "Expect ';' after value.")
     PrintStmt(expr)
+  }
+
+  private def breakStatement(): Stmt = {
+    if(loopDepth == 0){
+      error(previous, "Invalid 'break' outside of loop scope.")
+    }
+    consume(SEMICOLON, "Expect ';' after break.")
+    BreakStmt
   }
 
   private def expressionStatement(): Stmt = {

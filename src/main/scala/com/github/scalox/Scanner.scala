@@ -194,7 +194,8 @@ class Scanner(source: String) {
 
 object Scanner {
   val EOF_CHAR = '\u0000'
-  val RESERVED_KEYWORDS: Map[String, TokenType] = Seq(AND, CLASS, ELSE, FALSE, FOR, FUN, IF, NIL, OR, PRINT, RETURN, SUPER, THIS, TRUE, VAR, WHILE)
+  val RESERVED_KEYWORDS: Map[String, TokenType] =
+    Seq(AND, CLASS, ELSE, FALSE, FOR, FUN, IF, NIL, OR, PRINT, RETURN, SUPER, THIS, TRUE, VAR, WHILE, BREAK)
     .map(t => t.name().toLowerCase -> t)
     .toMap
 }

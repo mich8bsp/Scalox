@@ -25,15 +25,21 @@ class Interpreter {
       statements.foreach(execute(_)(blockEnv))
     case IfStmt(condition, thenBranch, elseBranch) =>
       val conditionValue: Boolean = isTruthy(evaluate(condition))
-      if(conditionValue){
+      if (conditionValue) {
         execute(thenBranch)
-      }else{
+      } else {
         elseBranch.foreach(execute(_))
       }
     case WhileStmt(condition, body) =>
-      while(isTruthy(evaluate(condition))){
-        execute(body)
+      try {
+        while (isTruthy(evaluate(condition))) {
+          execute(body)
+        }
+      } catch {
+        case _: BreakException =>
       }
+
+    case BreakStmt => throw BreakException()
   }
 
   def interpret(expression: Expr): Unit = {
@@ -125,28 +131,26 @@ class Interpreter {
       case Some(v) => Some(v)
       case None => throw RuntimeError(name, "Uninitialized variable.")
     }
-    case AssignExpr(name, value) => {
+    case AssignExpr(name, value) =>
       val evaluatedValue = evaluate(value)
       env.assign(name, evaluatedValue)
       evaluatedValue
-    }
-    case LogicalExpr(left, operator, right) => {
+    case LogicalExpr(left, operator, right) =>
       val leftValue: Option[Any] = evaluate(left)
       operator.tokenType match {
         //short circuit
-        case TokenType.OR => if(isTruthy(leftValue)){
+        case TokenType.OR => if (isTruthy(leftValue)) {
           leftValue
-        }else{
+        } else {
           evaluate(right)
         }
-        case TokenType.AND => if(!isTruthy(leftValue)){
+        case TokenType.AND => if (!isTruthy(leftValue)) {
           leftValue
-        } else{
+        } else {
           evaluate(right)
         }
         case _ => throw RuntimeError(operator, "Unrecognized logical operator.")
       }
-    }
   }
 
   private def isTruthy(exprValue: Option[Any]): Boolean = exprValue match {
@@ -182,3 +186,5 @@ class Interpreter {
 }
 
 case class RuntimeError(token: Token, message: String) extends RuntimeException(message)
+
+case class BreakException() extends Exception
