@@ -6,7 +6,7 @@ class Environment(enclosingEnv: Option[Environment] = None) {
   private val values: mutable.Map[String, Option[Any]] = mutable.Map[String, Option[Any]]()
 
   def define(name: Token, value: Option[Any]): Unit = {
-    if(isDefined(name.lexeme)){
+    if (isDefined(name.lexeme)) {
       throw RuntimeError(name, s"Variable '${name.lexeme}' is already defined in this scope.")
     }
     values.put(name.lexeme, value)
@@ -24,9 +24,9 @@ class Environment(enclosingEnv: Option[Environment] = None) {
   }
 
   def assign(name: Token, value: Option[Any]): Unit = {
-    if(values.contains(name.lexeme)){
+    if (values.contains(name.lexeme)) {
       values.put(name.lexeme, value)
-    }else{
+    } else {
       enclosingEnv match {
         case Some(parentEnv) => parentEnv.assign(name, value)
         case None => throw RuntimeError(name, s"Undefined variable '${name.lexeme}'.")

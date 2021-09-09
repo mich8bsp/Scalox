@@ -36,7 +36,7 @@ class Interpreter {
   }
 
   private def evaluate(expression: Expr)
-              (implicit env: Environment): Option[Any] = expression match {
+                      (implicit env: Environment): Option[Any] = expression match {
     case BinaryExpr(left, operator, right) =>
       val leftValue: Option[Any] = evaluate(left)
       val rightValue: Option[Any] = evaluate(right)
@@ -46,9 +46,9 @@ class Interpreter {
           Some(left - right)
         case TokenType.SLASH =>
           val (left, right) = getOperandsAsNumbers(operator, leftValue, rightValue)
-          if(right == 0D){
+          if (right == 0D) {
             throw RuntimeError(operator, "/ by zero")
-          }else{
+          } else {
             Some(left / right)
           }
         case TokenType.STAR =>
@@ -103,9 +103,9 @@ class Interpreter {
       (leftOperator.tokenType, rightOperator.tokenType) match {
         case (TokenType.QUESTION_MARK, TokenType.COLON) =>
           val leftValue: Option[Any] = evaluate(left)
-          if(isTruthy(leftValue)){
+          if (isTruthy(leftValue)) {
             evaluate(middle)
-          }else{
+          } else {
             evaluate(right)
           }
         case _ => throw RuntimeError(leftOperator, "Unrecognized ternary operator.")
@@ -144,9 +144,9 @@ class Interpreter {
     case None => "nil"
     case Some(d: Double) =>
       val numberText: String = d.toString
-      if(numberText.endsWith(".0")){
+      if (numberText.endsWith(".0")) {
         numberText.substring(0, numberText.length - 2)
-      }else{
+      } else {
         numberText
       }
     case Some(x) => x.toString

@@ -1,8 +1,12 @@
 package com.github.scalox
 
+import com.github.scalox.TokenType._
+
 import scala.collection.mutable
 
 class Scanner(source: String) {
+
+  import Scanner._
 
   private var start: Int = 0
   private var current: Int = 0
@@ -165,7 +169,7 @@ class Scanner(source: String) {
       while (!(peek == '*' && peekNext == '/') && !isAtEnd) {
         if (peek == '\n') {
           line += 1
-        }else if(peek == '/' && peekNext == '*'){
+        } else if (peek == '/' && peekNext == '*') {
           nestingLevel += 1
           advance() //advance by another 1 to prevent /*/ from being a legal comment
         }

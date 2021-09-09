@@ -7,23 +7,23 @@ object ErrorHandler {
   var hadRuntimeError = false
 
   def error(line: Int, message: String, where: String = ""): Unit = {
-    if(!silent){
+    if (!silent) {
       System.err.println(s"[line $line] Error$where: $message")
     }
     hadError = true
   }
 
   def error(token: Token, message: String): Unit = {
-    val where: String = if(token.tokenType == TokenType.EOF){
+    val where: String = if (token.tokenType == TokenType.EOF) {
       " at end"
-    }else{
+    } else {
       s" at '${token.lexeme}'"
     }
     error(line = token.line, message = message, where = where)
   }
 
   def runtimeError(e: RuntimeError): Unit = {
-    if(!silent){
+    if (!silent) {
       System.err.println(s"${e.getMessage}\n[line ${e.token.line}]")
     }
     hadRuntimeError = true

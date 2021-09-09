@@ -10,7 +10,7 @@ class Parser(tokens: Seq[Token]) {
   def parseStatements(): Seq[Stmt] = try {
     // program -> declaration* EOF
     val statements: mutable.Buffer[Stmt] = mutable.Buffer()
-    while(!isAtEnd){
+    while (!isAtEnd) {
       declaration().foreach(statements.append)
     }
     statements.toSeq
@@ -30,12 +30,12 @@ class Parser(tokens: Seq[Token]) {
   private def declaration(): Option[Stmt] = {
     // declaration -> varDeclaration | statement
     try {
-      if(matchExpr(VAR)){
+      if (matchExpr(VAR)) {
         Some(varDeclaration())
-      }else{
+      } else {
         Some(statement())
       }
-    }catch {
+    } catch {
       case _: ParseError =>
         synchronize()
         None
@@ -46,9 +46,9 @@ class Parser(tokens: Seq[Token]) {
     // varDeclaration -> "var" IDENTIFIER ( "=" expression )? ";"
     val name: Token = consumeAndGet(IDENTIFIER, "Expect variable name.")
 
-    val initializer: Option[Expr] = if(matchExpr(EQUAL)){
+    val initializer: Option[Expr] = if (matchExpr(EQUAL)) {
       Some(expression())
-    }else{
+    } else {
       None
     }
 
@@ -58,11 +58,11 @@ class Parser(tokens: Seq[Token]) {
 
   private def statement(): Stmt = {
     // statement -> expressionStatement | printStatement | blockStatement
-    if(matchExpr(PRINT)){
+    if (matchExpr(PRINT)) {
       printStatement()
-    }else if(matchExpr(LEFT_BRACE)){
+    } else if (matchExpr(LEFT_BRACE)) {
       BlockStmt(blockStatement())
-    }else{
+    } else {
       expressionStatement()
     }
   }
@@ -82,7 +82,7 @@ class Parser(tokens: Seq[Token]) {
   private def blockStatement(): Seq[Stmt] = {
     // blockStatement -> "{" declaration* "}"
     val statements: mutable.Buffer[Stmt] = mutable.Buffer()
-    while(!check(RIGHT_BRACE) && !isAtEnd){
+    while (!check(RIGHT_BRACE) && !isAtEnd) {
       declaration().foreach(statements.append)
     }
 
@@ -97,7 +97,7 @@ class Parser(tokens: Seq[Token]) {
   private def assignment(): Expr = {
     val expr = ternary()
 
-    if(matchExpr(EQUAL)){
+    if (matchExpr(EQUAL)) {
       val equals = previous
       val value = assignment()
 
@@ -106,7 +106,7 @@ class Parser(tokens: Seq[Token]) {
         case _ => error(equals, "Invalid assignment target.")
           expr
       }
-    }else{
+    } else {
       expr
     }
   }
@@ -177,7 +177,7 @@ class Parser(tokens: Seq[Token]) {
       LiteralExpr(None)
     } else if (matchExpr(NUMBER, STRING)) {
       LiteralExpr(previous.literal)
-    } else if (matchExpr(IDENTIFIER)){
+    } else if (matchExpr(IDENTIFIER)) {
       VariableExpr(previous)
     } else if (matchExpr(LEFT_PAREN)) {
       val expr = expression()
@@ -191,11 +191,11 @@ class Parser(tokens: Seq[Token]) {
   private def binaryExpr(subExpression: () => Expr,
                          tokenTypes: TokenType*): Expr = {
     val tokensValidOnlyAsBinary = tokenTypes.filterNot(_ == TokenType.MINUS)
-    if(matchExpr(tokensValidOnlyAsBinary: _*)){
+    if (matchExpr(tokensValidOnlyAsBinary: _*)) {
       //binary expression is missing left side expression
       subExpression() // read right side expression and discard
       throw error(previous, "Expect expression.")
-    }else {
+    } else {
       var expr = subExpression()
 
       while (matchExpr(tokenTypes: _*)) {
@@ -219,9 +219,9 @@ class Parser(tokens: Seq[Token]) {
 
   private def consumeAndGet(tokenType: TokenType,
                             errorMessage: String): Token = {
-    if(check(tokenType)){
+    if (check(tokenType)) {
       getAndAdvance()
-    }else{
+    } else {
       throw error(peek, errorMessage)
     }
   }
