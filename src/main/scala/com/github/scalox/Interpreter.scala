@@ -116,16 +116,12 @@ class Interpreter {
         case TokenType.BANG => Some(!isTruthy(rightValue))
         case _ => throw RuntimeError(operator, "Unrecognized unary operator.")
       }
-    case TernaryExpr(left, leftOperator, middle, rightOperator, right) =>
-      (leftOperator.tokenType, rightOperator.tokenType) match {
-        case (TokenType.QUESTION_MARK, TokenType.COLON) =>
-          val leftValue: Option[Any] = evaluate(left)
-          if (isTruthy(leftValue)) {
-            evaluate(middle)
-          } else {
-            evaluate(right)
-          }
-        case _ => throw RuntimeError(leftOperator, "Unrecognized ternary operator.")
+    case ConditionalExpr(condition, thenBranch, elseBranch) =>
+      val conditionValue: Option[Any] = evaluate(condition)
+      if(isTruthy(conditionValue)){
+        evaluate(thenBranch)
+      }else{
+        evaluate(elseBranch)
       }
     case VariableExpr(name) => env.get(name) match {
       case Some(v) => Some(v)

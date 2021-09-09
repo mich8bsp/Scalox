@@ -14,12 +14,10 @@ case class LiteralExpr(value: Option[Any]) extends Expr
 
 case class UnaryExpr(operator: Token, right: Expr) extends Expr
 
-case class TernaryExpr(
-                        left: Expr,
-                        leftOperator: Token,
-                        middle: Expr,
-                        rightOperator: Token,
-                        right: Expr
+case class ConditionalExpr(
+                        condition: Expr,
+                        thenBranch: Expr,
+                        elseBranch: Expr
                       ) extends Expr
 
 case class VariableExpr(name: Token) extends Expr

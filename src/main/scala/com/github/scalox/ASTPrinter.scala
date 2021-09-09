@@ -11,8 +11,8 @@ object ASTPrinter {
       value.map(_.toString).getOrElse("nil")
     case UnaryExpr(operator, right) =>
       parenthesize(operator.lexeme, right)
-    case TernaryExpr(left, leftOperator, middle, rightOperator, right) =>
-      s"(${leftOperator.lexeme} ${print(left)} (${rightOperator.lexeme} ${print(middle)} ${print(right)}))"
+    case ConditionalExpr(condition, thenBranch, elseBranch) =>
+     parenthesize("conditional", condition, thenBranch, elseBranch)
     case VariableExpr(name) =>
       s"(var ${name.lexeme})"
     case AssignExpr(name, value) => parenthesize(name.lexeme, value)

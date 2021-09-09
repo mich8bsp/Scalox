@@ -63,13 +63,13 @@ class Parser(tokens: Seq[Token]) {
       printStatement()
     } else if (matchExpr(LEFT_BRACE)) {
       blockStatement()
-    }else if (matchExpr(IF)){
+    } else if (matchExpr(IF)) {
       ifStatement()
-    } else if (matchExpr(WHILE)){
+    } else if (matchExpr(WHILE)) {
       whileStatement()
-    } else if (matchExpr(FOR)){
+    } else if (matchExpr(FOR)) {
       forStatement()
-    } else if (matchExpr(BREAK)){
+    } else if (matchExpr(BREAK)) {
       breakStatement()
     } else {
       expressionStatement()
@@ -83,9 +83,9 @@ class Parser(tokens: Seq[Token]) {
     consume(RIGHT_PAREN, "Expect ')' after if condition.")
 
     val thenBranch: Stmt = statement()
-    val elseBranch: Option[Stmt] = if(matchExpr(ELSE)){
+    val elseBranch: Option[Stmt] = if (matchExpr(ELSE)) {
       Some(statement())
-    }else{
+    } else {
       None
     }
     IfStmt(condition, thenBranch, elseBranch)
@@ -111,24 +111,24 @@ class Parser(tokens: Seq[Token]) {
     //forStatement -> "for" "(" (varDeclaration | exprStmt | ";") expression? ";" expression? ")" statement
     consume(LEFT_PAREN, "Expect '(' after 'for'.")
 
-    val initializer: Option[Stmt] = if(matchExpr(SEMICOLON)){
+    val initializer: Option[Stmt] = if (matchExpr(SEMICOLON)) {
       None
-    }else if (matchExpr(VAR)){
+    } else if (matchExpr(VAR)) {
       Some(varDeclaration())
-    }else {
+    } else {
       Some(expressionStatement())
     }
 
-    val condition: Expr = if(!check(SEMICOLON)){
+    val condition: Expr = if (!check(SEMICOLON)) {
       expression()
-    }else{
+    } else {
       LiteralExpr(Some(true))
     }
     consume(SEMICOLON, "Expect ';' after loop condition.")
 
-    val increment: Option[Expr] = if(!check(SEMICOLON)){
+    val increment: Option[Expr] = if (!check(SEMICOLON)) {
       Some(expression())
-    }else{
+    } else {
       None
     }
     consume(RIGHT_PAREN, "Expect ')' after for clauses.")
@@ -160,7 +160,7 @@ class Parser(tokens: Seq[Token]) {
   }
 
   private def breakStatement(): Stmt = {
-    if(loopDepth == 0){
+    if (loopDepth == 0) {
       error(previous, "Invalid 'break' outside of loop scope.")
     }
     consume(SEMICOLON, "Expect ';' after break.")
@@ -209,25 +209,18 @@ class Parser(tokens: Seq[Token]) {
   }
 
   private def ternary(): Expr = {
-    //ternary -> equality ("?") expression (":") expression | logic_or
+    //ternary -> logic_or ( "?" expression ":" ternary)?
     var expr = logicOr()
 
     if (matchExpr(QUESTION_MARK)) {
-      val leftOperator = previous
       val exprIfTrue = expression()
-      if (matchExpr(COLON)) {
-        val rightOperator = previous
-        val exprIfFalse = expression()
-        expr = TernaryExpr(
-          left = expr,
-          middle = exprIfTrue,
-          right = exprIfFalse,
-          leftOperator = leftOperator,
-          rightOperator = rightOperator
-        )
-      } else {
-        throw error(peek, "Expected : after expression.")
-      }
+      consume(COLON, "Expect ';' after then branch of conditional expression.")
+      val exprIfFalse = ternary()
+      expr = ConditionalExpr(
+        condition = expr,
+        thenBranch = exprIfTrue,
+        elseBranch = exprIfFalse
+      )
     }
 
     expr
@@ -237,7 +230,7 @@ class Parser(tokens: Seq[Token]) {
     // logic_or -> logic_and ( "or" logic_and )*
     var expr = logicAnd()
 
-    while(matchExpr(OR)){
+    while (matchExpr(OR)) {
       val operator = previous
       val right = logicAnd()
       expr = LogicalExpr(expr, operator, right)
@@ -250,7 +243,7 @@ class Parser(tokens: Seq[Token]) {
     // logic_and -> equality ( "and" equality)*
     var expr = equality()
 
-    while(matchExpr(AND)){
+    while (matchExpr(AND)) {
       val operator = previous
       val right = equality()
       expr = LogicalExpr(expr, operator, right)
