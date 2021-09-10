@@ -44,10 +44,12 @@ class Interpreter {
       }
 
     case BreakStmt => throw BreakException()
-    case stmt: FunctionStmt => {
-      val func: LoxFunction = new LoxFunction(stmt)
+    case stmt: FunctionStmt =>
+      val func: LoxFunction = new LoxFunction(stmt, env)
       env.define(stmt.name, Some(func))
-    }
+    case ReturnStmt(token, value) =>
+      val returnValue: Option[Any] = value.flatMap(evaluate(_))
+      throw ReturnException(returnValue)
   }
 
   def interpret(expression: Expr): Unit = {
@@ -218,4 +220,5 @@ class Interpreter {
 
 case class RuntimeError(token: Token, message: String) extends RuntimeException(message)
 
-case class BreakException() extends Exception
+case class BreakException() extends Exception(null, null, false, false)
+case class ReturnException(value: Option[Any]) extends Exception(null, null, false, false)

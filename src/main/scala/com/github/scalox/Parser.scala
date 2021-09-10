@@ -85,7 +85,7 @@ class Parser(tokens: Seq[Token]) {
   }
 
   private def statement(): Stmt = {
-    // statement -> expressionStatement | forStatement | ifStatement | printStatement | whileStatement | blockStatement | breakStatement | continueStatement
+    // statement -> expressionStatement | forStatement | ifStatement | printStatement | whileStatement | blockStatement | breakStatement | returnStatement
     if (matchExpr(PRINT)) {
       printStatement()
     } else if (matchExpr(LEFT_BRACE)) {
@@ -98,6 +98,8 @@ class Parser(tokens: Seq[Token]) {
       forStatement()
     } else if (matchExpr(BREAK)) {
       breakStatement()
+    } else if(matchExpr(RETURN)){
+      returnStatement()
     } else {
       expressionStatement()
     }
@@ -192,6 +194,19 @@ class Parser(tokens: Seq[Token]) {
     }
     consume(SEMICOLON, "Expect ';' after break.")
     BreakStmt
+  }
+
+  private def returnStatement(): Stmt = {
+    // returnStatement -> "return" expression? ";"
+    val token = previous
+    val value: Option[Expr] = if(!check(SEMICOLON)){
+      Some(expression())
+    }else{
+      None
+    }
+
+    consume(SEMICOLON, "Expect ';' after return value.")
+    ReturnStmt(token = token, value = value)
   }
 
   private def expressionStatement(): Stmt = {

@@ -17,3 +17,5 @@ case class WhileStmt(condition: Expr, body: Stmt) extends Stmt
 case object BreakStmt extends Stmt
 
 case class FunctionStmt(name: Token, params: Seq[Token], body: Seq[Stmt]) extends Stmt
+
+case class ReturnStmt(token: Token, value: Option[Expr]) extends Stmt
