@@ -273,14 +273,46 @@ class Parser(tokens: Seq[Token]) {
   }
 
   private def unary(): Expr = {
-    //unary → ( "!" | "-" ) unary | primary ;
+    //unary → ( "!" | "-" ) unary | call ;
     if (matchExpr(BANG, MINUS)) {
       val operator: Token = previous
       val right: Expr = unary()
       UnaryExpr(operator = operator, right = right)
     } else {
-      primary()
+      call()
     }
+  }
+
+  private def call(): Expr = {
+    // call -> primary ( "(" arguments? ")" )* ;
+    val functionExpr: Expr = primary()
+    val args: mutable.Buffer[Expr] = mutable.Buffer[Expr]()
+    var parenToken: Option[Token] = None
+    while (matchExpr(LEFT_PAREN)){
+      if(!matchExpr(RIGHT_PAREN)){
+        args.appendAll(arguments())
+        parenToken = Some(consumeAndGet(RIGHT_PAREN, "Expect ')' after function arguments."))
+      }else{
+        parenToken = Some(previous)
+      }
+    }
+    parenToken match {
+      case Some(t) => CallExpr(callee = functionExpr, paren = t, arguments = args.toSeq)
+      case None => functionExpr
+    }
+  }
+
+  private def arguments(): Seq[Expr] = {
+    // arguments -> expression ( "," expression )* ;
+    val args = mutable.Buffer[Expr]()
+    args.append(expression())
+    while(matchExpr(COMMA)){
+      if(arguments().size >= 255){
+        error(peek, "Can't have more than 255 arguments.")
+      }
+      args.append(expression())
+    }
+    args.toSeq
   }
 
   private def primary(): Expr = {

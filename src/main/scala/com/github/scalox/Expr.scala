@@ -25,3 +25,5 @@ case class VariableExpr(name: Token) extends Expr
 case class AssignExpr(name: Token, value: Expr) extends Expr
 
 case class LogicalExpr(left: Expr, operator: Token, right: Expr) extends Expr
+
+case class CallExpr(callee: Expr, paren: Token, arguments: Seq[Expr]) extends Expr

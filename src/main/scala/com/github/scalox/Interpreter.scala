@@ -147,6 +147,20 @@ class Interpreter {
         }
         case _ => throw RuntimeError(operator, "Unrecognized logical operator.")
       }
+
+    case CallExpr(callee, paren, args) =>
+      val calleeValue: Option[Any] = evaluate(callee)
+      val argsValues: Seq[Option[Any]] = args.map(evaluate(_))
+
+      calleeValue match {
+        case Some(callable: LoxCallable) =>
+          implicit val implInterpreter: Interpreter = this
+          if(argsValues.size != callable.arity()){
+            throw RuntimeError(paren, s"Expected ${callable.arity()} arguments but got ${argsValues.size}.")
+          }
+          callable.call(argsValues)
+        case _ => throw RuntimeError(paren, "Can only call functions and classes.")
+      }
   }
 
   private def isTruthy(exprValue: Option[Any]): Boolean = exprValue match {
