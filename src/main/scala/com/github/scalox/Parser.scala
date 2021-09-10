@@ -31,7 +31,8 @@ class Parser(tokens: Seq[Token]) {
   private def declaration(): Option[Stmt] = {
     // declaration -> funDeclaration | varDeclaration | statement
     try {
-      if (matchExpr(FUN)){
+      if (check(FUN) && checkNext(IDENTIFIER)){
+        consume(FUN, "")
         Some(funDeclaration("function"))
       }else if (matchExpr(VAR)) {
         Some(varDeclaration())
@@ -50,6 +51,11 @@ class Parser(tokens: Seq[Token]) {
     //function -> IDENTIFIER "(" parameters? ")" block
     //parameters -> IDENTIFIER ( "," IDENTIFIER )*
     val name: Token = consumeAndGet(IDENTIFIER, s"Expect $kind name.")
+
+    FunctionStmt(name = name, function = functionBody(kind))
+  }
+
+  private def functionBody(kind: String): FunctionExpr = {
     consume(LEFT_PAREN, s"Expect '(' after $kind name.")
     val params: mutable.Buffer[Token] = mutable.Buffer[Token]()
     if(!check(RIGHT_PAREN)){
@@ -67,7 +73,9 @@ class Parser(tokens: Seq[Token]) {
       case BlockStmt(statements) => statements
       case _ => throw new Exception("Invalid parser state")
     }
-    FunctionStmt(name = name, params = params.toSeq, body = body)
+    FunctionExpr(
+      parameters = params.toSeq, body = body
+    )
   }
 
   private def varDeclaration(): Stmt = {
@@ -373,6 +381,8 @@ class Parser(tokens: Seq[Token]) {
       val expr = expression()
       consume(RIGHT_PAREN, "Expect ')' after expression.")
       GroupingExpr(expr)
+    } else if(matchExpr(FUN)){
+      functionBody("function")
     } else {
       throw error(peek, "Expect expression.")
     }
@@ -451,6 +461,14 @@ class Parser(tokens: Seq[Token]) {
 
   private def check(expectedType: TokenType): Boolean = {
     !isAtEnd && (peek.tokenType == expectedType)
+  }
+
+  private def checkNext(tokenType: TokenType): Boolean = {
+    if(isAtEnd || tokens(current+1).tokenType == EOF) {
+      false
+    }else{
+      tokens(current+1).tokenType == tokenType
+    }
   }
 
   private def advance(): Unit = {

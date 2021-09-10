@@ -8,14 +8,15 @@ trait LoxCallable {
           (implicit interpreter: Interpreter): Option[Any]
 }
 
-class LoxFunction(declaration: FunctionStmt,
+class LoxFunction(name: Option[String],
+                  declaration: FunctionExpr,
                   closure: Environment) extends LoxCallable {
-  override def arity(): Int = declaration.params.size
+  override def arity(): Int = declaration.parameters.size
 
   override def call(arguments: Seq[Option[Any]])
                    (implicit interpreter: Interpreter): Option[Any] = {
     val functionEnv: Environment = new Environment(Some(closure))
-    declaration.params.zip(arguments).foreach({
+    declaration.parameters.zip(arguments).foreach({
       case (paramToken, argValue) =>
         //defining a parameter with same name as already defined in outer scope variable is allowed
         functionEnv.define(paramToken, argValue, checkNotDefinedInParentScopes = false)
@@ -28,5 +29,5 @@ class LoxFunction(declaration: FunctionStmt,
     }
   }
 
-  override def toString: String = s"<fn ${declaration.name.lexeme}>"
+  override def toString: String = name.map(x => s"<fn $x>").getOrElse("<fn>")
 }

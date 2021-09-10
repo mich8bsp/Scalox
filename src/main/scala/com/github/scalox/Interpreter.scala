@@ -45,7 +45,7 @@ class Interpreter {
 
     case BreakStmt => throw BreakException()
     case stmt: FunctionStmt =>
-      val func: LoxFunction = new LoxFunction(stmt, env)
+      val func: LoxFunction = new LoxFunction(Some(stmt.name.lexeme), stmt.function, env)
       env.define(stmt.name, Some(func))
     case ReturnStmt(token, value) =>
       val returnValue: Option[Any] = value.flatMap(evaluate(_))
@@ -171,6 +171,10 @@ class Interpreter {
           callable.call(argsValues)
         case _ => throw RuntimeError(paren, "Can only call functions and classes.")
       }
+    case expr: FunctionExpr =>
+      Some(new LoxFunction(name = None,
+        declaration = expr,
+        closure = env))
   }
 
   private def isTruthy(exprValue: Option[Any]): Boolean = exprValue match {

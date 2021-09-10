@@ -37,9 +37,9 @@ object Lox {
     val parser: Parser = new Parser(tokens)
 
     ErrorHandler.silent = true
-    val parsedAsExpressionSuccess: Boolean = parser.parseExpression().exists(_ => !ErrorHandler.hadError)
+    val parsedAsStatementsSuccess: Boolean = parser.parseStatements().exists(_ => !ErrorHandler.hadError)
     ErrorHandler.reset()
-    if (parsedAsExpressionSuccess) {
+    if (!parsedAsStatementsSuccess) {
       parser.parseExpression().foreach(ast => interpreter.interpret(ast))
     } else {
       parser.parseStatements().filter(_ => !ErrorHandler.hadError) match {
