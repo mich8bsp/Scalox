@@ -1,11 +1,15 @@
 package com.github.scalox
 
 class Interpreter {
-  private val globalEnvironment: Environment = new Environment()
+  val globalEnv: Environment = {
+    val e = new Environment()
+    defineClockFunc(e)
+    e
+  }
 
   def interpret(statements: Seq[Stmt]): Unit = {
     try {
-      implicit val env: Environment = globalEnvironment
+      implicit val env: Environment = globalEnv
       statements.foreach(execute)
     } catch {
       case e: RuntimeError =>
@@ -13,8 +17,8 @@ class Interpreter {
     }
   }
 
-  private def execute(statement: Stmt)
-                     (implicit env: Environment): Unit = statement match {
+  def execute(statement: Stmt)
+             (implicit env: Environment): Unit = statement match {
     case PrintStmt(expr) => println(stringify(evaluate(expr)))
     case ExpressionStmt(expr) => evaluate(expr)
     case VarStmt(name, initializer) =>
@@ -40,11 +44,15 @@ class Interpreter {
       }
 
     case BreakStmt => throw BreakException()
+    case stmt: FunctionStmt => {
+      val func: LoxFunction = new LoxFunction(stmt)
+      env.define(stmt.name, Some(func))
+    }
   }
 
   def interpret(expression: Expr): Unit = {
     try {
-      implicit val env: Environment = globalEnvironment
+      implicit val env: Environment = globalEnv
       println(stringify(evaluate(expression)))
     } catch {
       case e: RuntimeError =>
@@ -118,9 +126,9 @@ class Interpreter {
       }
     case ConditionalExpr(condition, thenBranch, elseBranch) =>
       val conditionValue: Option[Any] = evaluate(condition)
-      if(isTruthy(conditionValue)){
+      if (isTruthy(conditionValue)) {
         evaluate(thenBranch)
-      }else{
+      } else {
         evaluate(elseBranch)
       }
     case VariableExpr(name) => env.get(name) match {
@@ -155,7 +163,7 @@ class Interpreter {
       calleeValue match {
         case Some(callable: LoxCallable) =>
           implicit val implInterpreter: Interpreter = this
-          if(argsValues.size != callable.arity()){
+          if (argsValues.size != callable.arity()) {
             throw RuntimeError(paren, s"Expected ${callable.arity()} arguments but got ${argsValues.size}.")
           }
           callable.call(argsValues)
@@ -192,6 +200,19 @@ class Interpreter {
         numberText
       }
     case Some(x) => x.toString
+  }
+
+  private def defineClockFunc(env: Environment): Unit = {
+    env.define("clock", Some(new LoxCallable {
+      override def arity(): Int = 0
+
+      override def call(arguments: Seq[Option[Any]])
+                       (implicit interpreter: Interpreter): Option[Any] = {
+        Some(System.currentTimeMillis() / 1E3)
+      }
+
+      override def toString: String = "<native fn>"
+    }))
   }
 }
 

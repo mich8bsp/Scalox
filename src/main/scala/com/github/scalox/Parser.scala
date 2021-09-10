@@ -29,9 +29,11 @@ class Parser(tokens: Seq[Token]) {
   }
 
   private def declaration(): Option[Stmt] = {
-    // declaration -> varDeclaration | statement
+    // declaration -> funDeclaration | varDeclaration | statement
     try {
-      if (matchExpr(VAR)) {
+      if (matchExpr(FUN)){
+        Some(funDeclaration("function"))
+      }else if (matchExpr(VAR)) {
         Some(varDeclaration())
       } else {
         Some(statement())
@@ -41,6 +43,31 @@ class Parser(tokens: Seq[Token]) {
         synchronize()
         None
     }
+  }
+
+  private def funDeclaration(kind: String): Stmt = {
+    // funDeclaration -> "fun" function
+    //function -> IDENTIFIER "(" parameters? ")" block
+    //parameters -> IDENTIFIER ( "," IDENTIFIER )*
+    val name: Token = consumeAndGet(IDENTIFIER, s"Expect $kind name.")
+    consume(LEFT_PAREN, s"Expect '(' after $kind name.")
+    val params: mutable.Buffer[Token] = mutable.Buffer[Token]()
+    if(!check(RIGHT_PAREN)){
+      do {
+        if(params.size >= 255){
+          error(peek, "Can't have more than 255 parameters.")
+        }
+
+        params.append(consumeAndGet(IDENTIFIER, "Expect parameter name."))
+      } while (matchExpr(COMMA))
+    }
+    consume(RIGHT_PAREN, "Expect ')' after parameters.")
+    consume(LEFT_BRACE, s"Expect '{' before $kind body.")
+    val body: Seq[Stmt] = blockStatement() match {
+      case BlockStmt(statements) => statements
+      case _ => throw new Exception("Invalid parser state")
+    }
+    FunctionStmt(name = name, params = params.toSeq, body = body)
   }
 
   private def varDeclaration(): Stmt = {
@@ -307,7 +334,7 @@ class Parser(tokens: Seq[Token]) {
     val args = mutable.Buffer[Expr]()
     args.append(expression())
     while(matchExpr(COMMA)){
-      if(arguments().size >= 255){
+      if(args.size >= 255){
         error(peek, "Can't have more than 255 arguments.")
       }
       args.append(expression())
