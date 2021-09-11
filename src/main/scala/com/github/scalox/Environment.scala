@@ -2,7 +2,7 @@ package com.github.scalox
 
 import scala.collection.mutable
 
-class Environment(enclosingEnv: Option[Environment] = None) {
+class Environment(val enclosingEnv: Option[Environment] = None) {
   private val values: mutable.Map[String, Option[Any]] = mutable.Map[String, Option[Any]]()
 
   def define(name: Token, value: Option[Any],
@@ -30,6 +30,30 @@ class Environment(enclosingEnv: Option[Environment] = None) {
       enclosingEnv.map(_.get(name))
         .getOrElse(throw RuntimeError(name, s"Undefined variable '${name.lexeme}'."))
     )
+  }
+
+  def getAt(name: Token, distance: Int): Option[Any] = {
+    if(distance == 0){
+      values.getOrElse(name.lexeme, throw RuntimeError(name, s"Undefined variable '${name.lexeme}'."))
+    }else{
+      ancestor(distance) match {
+        case Some(relevantEnv) => relevantEnv.getAt(name, 0)
+        case None => throw new Exception("Invalid compiler state.")
+      }
+    }
+  }
+
+  def assignAt(name: Token, distance: Int, value: Option[Any]): Unit = {
+    ancestor(distance) match {
+      case Some(relevantEnv) => relevantEnv.define(name, value)
+      case None => throw new Exception("Invalid compiler state.")
+    }
+  }
+
+  private def ancestor(distance: Int): Option[Environment] = {
+    var env: Option[Environment] = Some(this)
+    (0 until distance).foreach(_ => env = env.flatMap(_.enclosingEnv))
+    env
   }
 
   def assign(name: Token, value: Option[Any]): Unit = {

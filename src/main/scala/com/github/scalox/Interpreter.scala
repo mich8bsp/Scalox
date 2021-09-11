@@ -1,11 +1,16 @@
 package com.github.scalox
 
+import scala.collection.mutable
+
 class Interpreter {
+
   val globalEnv: Environment = {
     val e = new Environment()
     defineClockFunc(e)
     e
   }
+
+  private val locals: mutable.Map[Expr, Int] = mutable.Map[Expr, Int]()
 
   def interpret(statements: Seq[Stmt]): Unit = {
     try {
@@ -133,13 +138,25 @@ class Interpreter {
       } else {
         evaluate(elseBranch)
       }
-    case VariableExpr(name) => env.get(name) match {
-      case Some(v) => Some(v)
-      case None => throw RuntimeError(name, "Uninitialized variable.")
+    case VariableExpr(name) => {
+      val scopeDistanceOpt: Option[Int] = locals.get(expression)
+      scopeDistanceOpt match {
+        case Some(scopeDistance) =>env.getAt(name, scopeDistance) match {
+          case Some(v) => Some(v)
+          case None => throw RuntimeError(name, "Uninitialized variable.")
+        }
+        case None => globalEnv.get(name)
+      }
     }
     case AssignExpr(name, value) =>
       val evaluatedValue = evaluate(value)
-      env.assign(name, evaluatedValue)
+      val scopeDistanceOpt: Option[Int] = locals.get(expression)
+      scopeDistanceOpt match {
+        case Some(scopeDistance) =>
+          env.assignAt(name, scopeDistance, evaluatedValue)
+        case None =>
+          globalEnv.assign(name, evaluatedValue)
+      }
       evaluatedValue
     case LogicalExpr(left, operator, right) =>
       val leftValue: Option[Any] = evaluate(left)
@@ -175,6 +192,10 @@ class Interpreter {
       Some(new LoxFunction(name = None,
         declaration = expr,
         closure = env))
+  }
+
+  def resolve(expr: Expr, depth: Int): Unit = {
+    locals.put(expr, depth)
   }
 
   private def isTruthy(exprValue: Option[Any]): Boolean = exprValue match {

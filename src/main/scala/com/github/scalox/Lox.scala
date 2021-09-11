@@ -4,6 +4,7 @@ import scala.io.{Source, StdIn}
 
 object Lox {
   private val interpreter = new Interpreter
+  private val resolver = new Resolver(interpreter)
 
   def runFile(path: String): Unit = {
     val source = Source.fromFile(path)
@@ -40,11 +41,20 @@ object Lox {
     val parsedAsStatementsSuccess: Boolean = parser.parseStatements().exists(_ => !ErrorHandler.hadError)
     ErrorHandler.reset()
     if (!parsedAsStatementsSuccess) {
-      parser.parseExpression().foreach(ast => interpreter.interpret(ast))
+      parser.parseExpression().foreach(ast => {
+        resolver.resolve(ast)
+        if(!ErrorHandler.hadError){
+          interpreter.interpret(ast)
+        }
+      })
     } else {
       parser.parseStatements().filter(_ => !ErrorHandler.hadError) match {
         case Nil =>
-        case ast => interpreter.interpret(ast)
+        case ast =>
+          resolver.resolve(ast)
+          if(!ErrorHandler.hadError){
+            interpreter.interpret(ast)
+          }
       }
     }
   }
