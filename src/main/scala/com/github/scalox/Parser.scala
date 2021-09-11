@@ -29,13 +29,15 @@ class Parser(tokens: Seq[Token]) {
   }
 
   private def declaration(): Option[Stmt] = {
-    // declaration -> funDeclaration | varDeclaration | statement
+    // declaration -> classDeclaration | funDeclaration | varDeclaration | statement
     try {
       if (check(FUN) && checkNext(IDENTIFIER)){
         consume(FUN, "")
         Some(funDeclaration("function"))
       }else if (matchExpr(VAR)) {
         Some(varDeclaration())
+      }else if (matchExpr(CLASS)){
+        Some(classDeclaration())
       } else {
         Some(statement())
       }
@@ -46,7 +48,22 @@ class Parser(tokens: Seq[Token]) {
     }
   }
 
-  private def funDeclaration(kind: String): Stmt = {
+  private def classDeclaration(): Stmt = {
+    //classDeclaration -> "class" IDENTIFIER "{" function* "}"
+    val className: Token = consumeAndGet(IDENTIFIER, "Expect class name.")
+    consume(LEFT_BRACE, "Expect '{' before class body.")
+
+    val methods: mutable.Buffer[FunctionStmt] = mutable.Buffer[FunctionStmt]()
+    while(!isAtEnd && !check(RIGHT_BRACE)){
+      methods.append(funDeclaration("method"))
+    }
+
+    consume(RIGHT_BRACE, "Expect '}' after class body.")
+
+    ClassStmt(name = className, methods = methods.toSeq)
+  }
+
+  private def funDeclaration(kind: String): FunctionStmt = {
     // funDeclaration -> "fun" function
     //function -> IDENTIFIER "(" parameters? ")" block
     //parameters -> IDENTIFIER ( "," IDENTIFIER )*
@@ -241,7 +258,7 @@ class Parser(tokens: Seq[Token]) {
   }
 
   private def assignment(): Expr = {
-    // assignment -> IDENTIFIER "=" assignment | ternary
+    // assignment -> (call ".")? IDENTIFIER "=" assignment | ternary
     val expr = ternary()
 
     if (matchExpr(EQUAL)) {
@@ -250,6 +267,7 @@ class Parser(tokens: Seq[Token]) {
 
       expr match {
         case VariableExpr(name) => AssignExpr(name, value)
+        case GetExpr(obj, name) => SetExpr(obj, name, value)
         case _ => error(equals, "Invalid assignment target.")
           expr
       }
@@ -334,22 +352,24 @@ class Parser(tokens: Seq[Token]) {
   }
 
   private def call(): Expr = {
-    // call -> primary ( "(" arguments? ")" )* ;
-    val functionExpr: Expr = primary()
-    val args: mutable.Buffer[Expr] = mutable.Buffer[Expr]()
-    var parenToken: Option[Token] = None
-    while (matchExpr(LEFT_PAREN)){
-      if(!matchExpr(RIGHT_PAREN)){
-        args.appendAll(arguments())
-        parenToken = Some(consumeAndGet(RIGHT_PAREN, "Expect ')' after function arguments."))
-      }else{
-        parenToken = Some(previous)
+    // call -> primary ( "(" arguments? ")" | "." IDENTIFIER )* ;
+    var functionExpr: Expr = primary()
+    while (matchExpr(LEFT_PAREN) || matchExpr(DOT)){
+      previous.tokenType match {
+        case LEFT_PAREN => if(!matchExpr(RIGHT_PAREN)){
+          val args: Seq[Expr] = arguments()
+          val parenToken = consumeAndGet(RIGHT_PAREN, "Expect ')' after function arguments.")
+          functionExpr = CallExpr(callee = functionExpr, paren = parenToken, arguments = args)
+        }else{
+          functionExpr = CallExpr(callee = functionExpr, paren = previous, arguments = Seq())
+        }
+        case DOT =>
+          val name = consumeAndGet(IDENTIFIER, "Expect property name after '.'.")
+          functionExpr = GetExpr(functionExpr, name)
       }
     }
-    parenToken match {
-      case Some(t) => CallExpr(callee = functionExpr, paren = t, arguments = args.toSeq)
-      case None => functionExpr
-    }
+
+    functionExpr
   }
 
   private def arguments(): Seq[Expr] = {
@@ -383,6 +403,8 @@ class Parser(tokens: Seq[Token]) {
       GroupingExpr(expr)
     } else if(matchExpr(FUN)){
       functionBody("function")
+    } else if (matchExpr(THIS)){
+      ThisExpr(previous)
     } else {
       throw error(peek, "Expect expression.")
     }

@@ -55,6 +55,13 @@ class Interpreter {
     case ReturnStmt(token, value) =>
       val returnValue: Option[Any] = value.flatMap(evaluate(_))
       throw ReturnException(returnValue)
+    case ClassStmt(name, methodStmts) =>
+      env.define(name.lexeme, None)
+      val methods: Map[String, LoxFunction] = methodStmts.map(method => {
+        method.name.lexeme -> new LoxFunction(Some(method.name.lexeme), method.function, env)
+      }).toMap
+      val klass: LoxClass = new LoxClass(name.lexeme, methods)
+      env.assign(name, Some(klass))
   }
 
   def interpret(expression: Expr): Unit = {
@@ -138,16 +145,7 @@ class Interpreter {
       } else {
         evaluate(elseBranch)
       }
-    case VariableExpr(name) => {
-      val scopeDistanceOpt: Option[Int] = locals.get(expression)
-      scopeDistanceOpt match {
-        case Some(scopeDistance) =>env.getAt(name, scopeDistance) match {
-          case Some(v) => Some(v)
-          case None => throw RuntimeError(name, "Uninitialized variable.")
-        }
-        case None => globalEnv.get(name)
-      }
-    }
+    case VariableExpr(name) => lookUpVariable(name, expression)
     case AssignExpr(name, value) =>
       val evaluatedValue = evaluate(value)
       val scopeDistanceOpt: Option[Int] = locals.get(expression)
@@ -192,10 +190,36 @@ class Interpreter {
       Some(new LoxFunction(name = None,
         declaration = expr,
         closure = env))
+    case GetExpr(obj, name) =>
+      evaluate(obj) match {
+        case Some(inst: LoxInstance) => inst.get(name)
+        case _ => throw RuntimeError(name, "Only instances have properties.")
+      }
+    case SetExpr(obj, name, value) =>
+      evaluate(obj) match {
+        case Some(inst: LoxInstance) =>
+          val evaluatedValue: Option[Any] = evaluate(value)
+          inst.set(name, evaluatedValue)
+          evaluatedValue
+        case _ => throw RuntimeError(name, "Only instances have fields.")
+      }
+    case ThisExpr(keyword) => lookUpVariable(keyword, expression)
   }
 
   def resolve(expr: Expr, depth: Int): Unit = {
     locals.put(expr, depth)
+  }
+
+  private def lookUpVariable(name: Token, expression: Expr)
+                            (implicit env: Environment): Option[Any] = {
+    val scopeDistanceOpt: Option[Int] = locals.get(expression)
+    scopeDistanceOpt match {
+      case Some(scopeDistance) =>env.getAt(name, scopeDistance) match {
+        case Some(v) => Some(v)
+        case None => throw RuntimeError(name, "Uninitialized variable.")
+      }
+      case None => globalEnv.get(name)
+    }
   }
 
   private def isTruthy(exprValue: Option[Any]): Boolean = exprValue match {

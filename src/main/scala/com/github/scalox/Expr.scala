@@ -29,3 +29,8 @@ case class LogicalExpr(left: Expr, operator: Token, right: Expr) extends Expr
 case class CallExpr(callee: Expr, paren: Token, arguments: Seq[Expr]) extends Expr
 
 case class FunctionExpr(parameters: Seq[Token], body: Seq[Stmt]) extends Expr
+
+case class GetExpr(obj: Expr, name: Token) extends Expr
+case class SetExpr(obj: Expr, name: Token, value: Expr) extends Expr
+
+case class ThisExpr(keyword: Token) extends Expr

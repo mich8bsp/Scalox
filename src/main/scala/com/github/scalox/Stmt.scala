@@ -19,3 +19,5 @@ case object BreakStmt extends Stmt
 case class FunctionStmt(name: Token, function: FunctionExpr) extends Stmt
 
 case class ReturnStmt(token: Token, value: Option[Expr]) extends Stmt
+
+case class ClassStmt(name: Token, methods: Seq[FunctionStmt]) extends Stmt

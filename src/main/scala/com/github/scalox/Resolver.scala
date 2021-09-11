@@ -41,6 +41,19 @@ class Resolver(interpreter: Interpreter) {
       resolve(condition)
       resolve(body)
     case BreakStmt =>
+    case ClassStmt(name, methods) =>
+      declare(name)
+      define(name)
+
+      beginScope()
+      scopes.head.put("this", true)
+
+      methods.foreach(method => {
+        val declaration: FunctionType.Value = FunctionType.METHOD
+        resolveFunction(method, declaration)
+      })
+
+      endScope()
   }
 
   def resolve(expression: Expr): Unit = expression match {
@@ -72,6 +85,13 @@ class Resolver(interpreter: Interpreter) {
       arguments.foreach(resolve)
     case FunctionExpr(_, body) =>
       resolve(body)
+    case GetExpr(obj, _) =>
+      resolve(obj)
+    case SetExpr(obj, _, value) =>
+      resolve(value)
+      resolve(obj)
+    case ThisExpr(keyword) =>
+      resolveLocal(expression, keyword)
   }
 
   private def resolveLocal(expr: Expr, name: Token): Unit = {
@@ -127,5 +147,5 @@ class Resolver(interpreter: Interpreter) {
 }
 
 object FunctionType extends Enumeration{
-  val NONE, FUNCTION = Value
+  val NONE, FUNCTION, METHOD = Value
 }

@@ -29,5 +29,11 @@ class LoxFunction(name: Option[String],
     }
   }
 
+  def bind(instance: LoxInstance): LoxFunction = {
+    val bindEnv: Environment = new Environment(Some(closure))
+    bindEnv.define("this", Some(instance))
+    new LoxFunction(name, declaration, bindEnv)
+  }
+
   override def toString: String = name.map(x => s"<fn $x>").getOrElse("<fn>")
 }
