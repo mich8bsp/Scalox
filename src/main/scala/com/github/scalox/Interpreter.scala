@@ -58,7 +58,8 @@ class Interpreter {
     case ClassStmt(name, methodStmts) =>
       env.define(name.lexeme, None)
       val methods: Map[String, LoxFunction] = methodStmts.map(method => {
-        method.name.lexeme -> new LoxFunction(Some(method.name.lexeme), method.function, env)
+        val methodName: String = method.name.lexeme
+        methodName -> new LoxFunction(Some(methodName), method.function, env, isInitializer = methodName == "init")
       }).toMap
       val klass: LoxClass = new LoxClass(name.lexeme, methods)
       env.assign(name, Some(klass))

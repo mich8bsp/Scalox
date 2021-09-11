@@ -7,11 +7,17 @@ class LoxClass(name: String,
 
   override def toString: String = name
 
-  override def arity(): Int = 0
+  override def arity(): Int = {
+    findMethod("init")
+      .map(_.arity())
+      .getOrElse(0)
+  }
 
   override def call(arguments: Seq[Option[Any]])
                    (implicit interpreter: Interpreter): Option[Any] = {
     val instance: LoxInstance = new LoxInstance(this)
+    val initializer: Option[LoxFunction] = findMethod("init")
+    initializer.foreach(_.bind(instance).call(arguments))
     Some(instance)
   }
 

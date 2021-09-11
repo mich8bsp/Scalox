@@ -6,9 +6,8 @@ class Environment(val enclosingEnv: Option[Environment] = None) {
   private val values: mutable.Map[String, Option[Any]] = mutable.Map[String, Option[Any]]()
 
   def define(name: Token, value: Option[Any],
-             checkNotDefinedInCurrentScope: Boolean = true,
-             checkNotDefinedInParentScopes: Boolean = true): Unit = {
-    if (checkNotDefinedInCurrentScope && isDefined(name.lexeme, checkNotDefinedInParentScopes)) {
+             checkNotDefinedInCurrentScope: Boolean = true): Unit = {
+    if (checkNotDefinedInCurrentScope && isDefined(name.lexeme)) {
       throw RuntimeError(name, s"Variable '${name.lexeme}' is already defined in this scope.")
     }
     define(name.lexeme, value)
@@ -18,11 +17,8 @@ class Environment(val enclosingEnv: Option[Environment] = None) {
     values.put(name, value)
   }
 
-  private def isDefined(name: String,
-                        checkNotDefinedInParentScopes: Boolean): Boolean = {
-    values.contains(name) ||
-      (checkNotDefinedInParentScopes &&
-        enclosingEnv.exists(_.isDefined(name, checkNotDefinedInParentScopes)))
+  private def isDefined(name: String): Boolean = {
+    values.contains(name)
   }
 
   def get(name: Token): Option[Any] = {
@@ -35,6 +31,17 @@ class Environment(val enclosingEnv: Option[Environment] = None) {
   def getAt(name: Token, distance: Int): Option[Any] = {
     if(distance == 0){
       values.getOrElse(name.lexeme, throw RuntimeError(name, s"Undefined variable '${name.lexeme}'."))
+    }else{
+      ancestor(distance) match {
+        case Some(relevantEnv) => relevantEnv.getAt(name, 0)
+        case None => throw new Exception("Invalid compiler state.")
+      }
+    }
+  }
+
+  def getAt(name: String, distance: Int): Option[Any] = {
+    if(distance == 0){
+      values(name)
     }else{
       ancestor(distance) match {
         case Some(relevantEnv) => relevantEnv.getAt(name, 0)

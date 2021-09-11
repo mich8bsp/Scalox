@@ -6,6 +6,7 @@ class Resolver(interpreter: Interpreter) {
 
   private val scopes: mutable.Stack[mutable.Map[String, Boolean]] = mutable.Stack()
   private var currentFunction: FunctionType.Value = FunctionType.NONE
+  private var currentClass: ClassType.Value = ClassType.NONE
 
   def resolve(statements: Seq[Stmt]): Unit = {
     statements.foreach(resolve)
@@ -33,8 +34,10 @@ class Resolver(interpreter: Interpreter) {
     case PrintStmt(expr) =>
       resolve(expr)
     case ReturnStmt(token, value) =>
-      if(currentFunction == FunctionType.NONE){
-        ErrorHandler.error(token, "Can't return from top-level code.")
+      currentFunction match {
+        case FunctionType.NONE => ErrorHandler.error(token, "Can't return from top-level code.")
+        case FunctionType.INITIALIZER if value.nonEmpty => ErrorHandler.error(token, "Can't return a value from an initializer")
+        case _ =>
       }
       value.foreach(resolve)
     case WhileStmt(condition, body) =>
@@ -42,6 +45,8 @@ class Resolver(interpreter: Interpreter) {
       resolve(body)
     case BreakStmt =>
     case ClassStmt(name, methods) =>
+      val enclosingClass: ClassType.Value = currentClass
+      currentClass = ClassType.CLASS
       declare(name)
       define(name)
 
@@ -49,11 +54,16 @@ class Resolver(interpreter: Interpreter) {
       scopes.head.put("this", true)
 
       methods.foreach(method => {
-        val declaration: FunctionType.Value = FunctionType.METHOD
+        val declaration: FunctionType.Value = if(method.name.lexeme == "init"){
+          FunctionType.INITIALIZER
+        }else{
+          FunctionType.METHOD
+        }
         resolveFunction(method, declaration)
       })
 
       endScope()
+      currentClass = enclosingClass
   }
 
   def resolve(expression: Expr): Unit = expression match {
@@ -90,8 +100,12 @@ class Resolver(interpreter: Interpreter) {
     case SetExpr(obj, _, value) =>
       resolve(value)
       resolve(obj)
-    case ThisExpr(keyword) =>
-      resolveLocal(expression, keyword)
+    case ThisExpr(keyword) => currentClass match {
+      case ClassType.NONE =>
+        ErrorHandler.error(keyword, "Can't use 'this' outside of a class.")
+      case ClassType.CLASS =>
+        resolveLocal(expression, keyword)
+    }
   }
 
   private def resolveLocal(expr: Expr, name: Token): Unit = {
@@ -147,5 +161,9 @@ class Resolver(interpreter: Interpreter) {
 }
 
 object FunctionType extends Enumeration{
-  val NONE, FUNCTION, METHOD = Value
+  val NONE, FUNCTION, METHOD, INITIALIZER = Value
+}
+
+object ClassType extends Enumeration {
+  val NONE, CLASS = Value
 }
