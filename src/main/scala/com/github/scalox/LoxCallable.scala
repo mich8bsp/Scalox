@@ -18,9 +18,7 @@ class LoxFunction(name: Option[String],
                    (implicit interpreter: Interpreter): Option[Any] = {
     val functionEnv: Environment = new Environment(Some(closure))
     declaration.parameters.zip(arguments).foreach({
-      case (paramToken, argValue) =>
-        //defining a parameter with same name as already defined in outer scope variable is allowed
-        functionEnv.define(paramToken, argValue)
+      case (paramToken, argValue) => functionEnv.define(paramToken, argValue)
     })
     try{
       declaration.body.foreach(stmt => interpreter.execute(stmt)(functionEnv))
