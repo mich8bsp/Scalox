@@ -34,3 +34,5 @@ case class GetExpr(obj: Expr, name: Token) extends Expr
 case class SetExpr(obj: Expr, name: Token, value: Expr) extends Expr
 
 case class ThisExpr(keyword: Token) extends Expr
+
+case class SuperExpr(keyword: Token, method: Token) extends Expr

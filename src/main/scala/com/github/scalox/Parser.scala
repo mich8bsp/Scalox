@@ -49,8 +49,15 @@ class Parser(tokens: Seq[Token]) {
   }
 
   private def classDeclaration(): Stmt = {
-    //classDeclaration -> "class" IDENTIFIER "{" function* "}"
+    //classDeclaration -> "class" IDENTIFIER ( "<" IDENTIFIER )? "{" function* "}"
     val className: Token = consumeAndGet(IDENTIFIER, "Expect class name.")
+
+    val superclass: Option[VariableExpr] = if(matchExpr(LESS)){
+      Some(VariableExpr(consumeAndGet(IDENTIFIER, "Expect superclass name.")))
+    }else{
+      None
+    }
+
     consume(LEFT_BRACE, "Expect '{' before class body.")
 
     val methods: mutable.Buffer[FunctionStmt] = mutable.Buffer[FunctionStmt]()
@@ -60,7 +67,7 @@ class Parser(tokens: Seq[Token]) {
 
     consume(RIGHT_BRACE, "Expect '}' after class body.")
 
-    ClassStmt(name = className, methods = methods.toSeq)
+    ClassStmt(name = className, superclass = superclass, methods = methods.toSeq)
   }
 
   private def funDeclaration(kind: String): FunctionStmt = {
@@ -386,7 +393,7 @@ class Parser(tokens: Seq[Token]) {
   }
 
   private def primary(): Expr = {
-    //primary → NUMBER | STRING | "true" | "false" | "nil" | "(" expression ")" | IDENTIFIER ;
+    //primary → NUMBER | STRING | "true" | "false" | "nil" | "(" expression ")" | IDENTIFIER | "super" "." IDENTIFIER;
     if (matchExpr(FALSE)) {
       LiteralExpr(Some(false))
     } else if (matchExpr(TRUE)) {
@@ -405,6 +412,11 @@ class Parser(tokens: Seq[Token]) {
       functionBody("function")
     } else if (matchExpr(THIS)){
       ThisExpr(previous)
+    } else if(matchExpr(SUPER)){
+      val keyword: Token = previous
+      consume(DOT, "Expect '.' after 'super'.")
+      val method: Token = consumeAndGet(IDENTIFIER, "Expect superclass method name.")
+      SuperExpr(keyword = keyword, method = method)
     } else {
       throw error(peek, "Expect expression.")
     }

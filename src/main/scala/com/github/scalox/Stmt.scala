@@ -20,4 +20,4 @@ case class FunctionStmt(name: Token, function: FunctionExpr) extends Stmt
 
 case class ReturnStmt(token: Token, value: Option[Expr]) extends Stmt
 
-case class ClassStmt(name: Token, methods: Seq[FunctionStmt]) extends Stmt
+case class ClassStmt(name: Token, superclass: Option[VariableExpr], methods: Seq[FunctionStmt]) extends Stmt

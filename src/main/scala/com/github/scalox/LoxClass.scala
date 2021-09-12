@@ -3,6 +3,7 @@ package com.github.scalox
 import scala.collection.mutable
 
 class LoxClass(name: String,
+               superclass: Option[LoxClass],
                methods: Map[String, LoxFunction]) extends LoxCallable {
 
   override def toString: String = name
@@ -23,6 +24,7 @@ class LoxClass(name: String,
 
   def findMethod(name: String): Option[LoxFunction] = {
     methods.get(name)
+      .orElse(superclass.flatMap(_.findMethod(name)))
   }
 }
 

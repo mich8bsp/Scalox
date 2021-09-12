@@ -44,11 +44,21 @@ class Resolver(interpreter: Interpreter) {
       resolve(condition)
       resolve(body)
     case BreakStmt =>
-    case ClassStmt(name, methods) =>
+    case ClassStmt(name, superclass, methods) =>
       val enclosingClass: ClassType.Value = currentClass
       currentClass = ClassType.CLASS
       declare(name)
       define(name)
+
+      if(superclass.map(_.name.lexeme).contains(name.lexeme)){
+        ErrorHandler.error(superclass.get.name, "A class can't inherit from itself.")
+      }
+
+      superclass.foreach(resolve(_))
+      if(superclass.nonEmpty){
+        beginScope()
+        scopes.head.put("super", true)
+      }
 
       beginScope()
       scopes.head.put("this", true)
@@ -61,6 +71,10 @@ class Resolver(interpreter: Interpreter) {
         }
         resolveFunction(method, declaration)
       })
+
+      if(superclass.nonEmpty){
+        endScope()
+      }
 
       endScope()
       currentClass = enclosingClass
@@ -106,6 +120,8 @@ class Resolver(interpreter: Interpreter) {
       case ClassType.CLASS =>
         resolveLocal(expression, keyword)
     }
+    case SuperExpr(keyword, _) =>
+      resolveLocal(expression, keyword)
   }
 
   private def resolveLocal(expr: Expr, name: Token): Unit = {
