@@ -12,6 +12,15 @@ class Resolver(interpreter: Interpreter) {
     statements.foreach(resolve)
   }
 
+  def resolveReturnStatement(token: Token, value: Option[Expr]): Unit = {
+    currentFunction match {
+      case FunctionType.NONE => ErrorHandler.error(token, "Can't return from top-level code.")
+      case FunctionType.INITIALIZER if value.nonEmpty => ErrorHandler.error(token, "Can't return a value from an initializer")
+      case _ =>
+    }
+    value.foreach(resolve)
+  }
+
   def resolve(statement: Stmt): Unit = statement match {
     case BlockStmt(statements) =>
       beginScope()
@@ -34,51 +43,16 @@ class Resolver(interpreter: Interpreter) {
     case PrintStmt(expr) =>
       resolve(expr)
     case ReturnStmt(token, value) =>
-      currentFunction match {
-        case FunctionType.NONE => ErrorHandler.error(token, "Can't return from top-level code.")
-        case FunctionType.INITIALIZER if value.nonEmpty => ErrorHandler.error(token, "Can't return a value from an initializer")
-        case _ =>
-      }
-      value.foreach(resolve)
+      resolveReturnStatement(token, value)
     case WhileStmt(condition, body) =>
       resolve(condition)
       resolve(body)
     case BreakStmt =>
     case ClassStmt(name, superclass, methods) =>
-      val enclosingClass: ClassType.Value = currentClass
-      currentClass = ClassType.CLASS
-      declare(name)
-      define(name)
-
-      if(superclass.map(_.name.lexeme).contains(name.lexeme)){
-        ErrorHandler.error(superclass.get.name, "A class can't inherit from itself.")
-      }
-
-      superclass.foreach(resolve(_))
-      if(superclass.nonEmpty){
-        beginScope()
-        scopes.head.put("super", true)
-      }
-
-      beginScope()
-      scopes.head.put("this", true)
-
-      methods.foreach(method => {
-        val declaration: FunctionType.Value = if(method.name.lexeme == "init"){
-          FunctionType.INITIALIZER
-        }else{
-          FunctionType.METHOD
-        }
-        resolveFunction(method, declaration)
-      })
-
-      if(superclass.nonEmpty){
-        endScope()
-      }
-
-      endScope()
-      currentClass = enclosingClass
+      resolveClassStatement(name, superclass, methods)
   }
+
+
 
   def resolve(expression: Expr): Unit = expression match {
     case VariableExpr(name) =>
@@ -121,6 +95,11 @@ class Resolver(interpreter: Interpreter) {
         resolveLocal(expression, keyword)
     }
     case SuperExpr(keyword, _) =>
+      currentClass match {
+        case ClassType.NONE => ErrorHandler.error(keyword, "Can't use 'super' outside of class.")
+        case ClassType.SUBCLASS =>
+        case _ => ErrorHandler.error(keyword, "Can't use 'super' in a class with no superclass.")
+      }
       resolveLocal(expression, keyword)
   }
 
@@ -152,6 +131,45 @@ class Resolver(interpreter: Interpreter) {
     currentFunction = enclosingFunction
   }
 
+  private def resolveClassStatement(name: Token, superclass: Option[VariableExpr], methods: Seq[FunctionStmt]): Unit = {
+    val enclosingClass: ClassType.Value = currentClass
+    currentClass = ClassType.CLASS
+    declare(name)
+    define(name)
+
+    if (superclass.map(_.name.lexeme).contains(name.lexeme)) {
+      ErrorHandler.error(superclass.get.name, "A class can't inherit from itself.")
+    }
+
+    superclass.foreach(s => {
+      currentClass = ClassType.SUBCLASS
+      resolve(s)
+    })
+    if (superclass.nonEmpty) {
+      beginScope()
+      scopes.head.put("super", true)
+    }
+
+    beginScope()
+    scopes.head.put("this", true)
+
+    methods.foreach(method => {
+      val declaration: FunctionType.Value = if (method.name.lexeme == "init") {
+        FunctionType.INITIALIZER
+      } else {
+        FunctionType.METHOD
+      }
+      resolveFunction(method, declaration)
+    })
+
+    if (superclass.nonEmpty) {
+      endScope()
+    }
+
+    endScope()
+    currentClass = enclosingClass
+  }
+
   private def declare(name: Token): Unit = {
     scopes.headOption.foreach(topScope => {
       if(topScope.contains(name.lexeme)){
@@ -181,5 +199,5 @@ object FunctionType extends Enumeration{
 }
 
 object ClassType extends Enumeration {
-  val NONE, CLASS = Value
+  val NONE, CLASS, SUBCLASS = Value
 }
